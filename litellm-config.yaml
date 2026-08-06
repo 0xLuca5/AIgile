@@ -1,0 +1,12 @@
+model_list:
+  - model_name: dial-gpt-5
+    litellm_params:
+      # 将此值替换为 DIAL 帐户获授权的模型名称。
+      model: azure/gpt-5.5-2026-04-24
+      api_key: os.environ/DIAL_API_KEY
+      base_url: https://ai-proxy.lab.epam.com
+      drop_params: true
+
+# Hermes 通过此密钥访问本地 LiteLLM；不要复用 DIAL_API_KEY。
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
