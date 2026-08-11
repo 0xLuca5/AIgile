@@ -46,6 +46,7 @@ services:
     volumes:
       - ${HERMES_DATA_DIR:-${USERPROFILE}/.hermes-dial}:/opt/data
       - ../settings/hermes-config.yaml:/opt/dial/hermes-config.yaml:ro
+      - ../prompts:/opt/dial/prompts:ro
       - ./bootstrap-hermes.py:/opt/dial/bootstrap-hermes.py:ro
     restart: "no"
 
@@ -74,6 +75,7 @@ services:
     volumes:
       - ${HERMES_DATA_DIR:-${USERPROFILE}/.hermes-dial}:/opt/data
       - ../../../..:/workspace
+      - ./skills:/opt/dial/skills:ro
     working_dir: /workspace
     shm_size: 1gb
     restart: unless-stopped

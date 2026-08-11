@@ -17,6 +17,14 @@ def require_env(name: str) -> str:
     return value
 
 
+def read_prompt(path: Path, placeholder: str) -> str:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except FileNotFoundError as error:
+        print(f"Prompt file for {placeholder} is missing: {path}", file=sys.stderr)
+        raise SystemExit(1) from error
+
+
 def main() -> None:
     master_key = require_env("LITELLM_MASTER_KEY")
     require_env("GITHUB_WEBHOOK_SECRET")
@@ -34,6 +42,7 @@ def main() -> None:
 
     data_dir = Path("/opt/data")
     source = Path("/opt/dial/hermes-config.yaml")
+    prompts_dir = Path("/opt/dial/prompts")
     target = data_dir / "config.yaml"
     marker = data_dir / ".dial-litellm-initialized"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -46,6 +55,12 @@ def main() -> None:
         shutil.copy2(target, data_dir / f"config.yaml.before-dial-bootstrap.{timestamp}")
 
     config = source.read_text(encoding="utf-8")
+    for placeholder, filename in {
+        "__GITHUB_PR_PROMPT__": "github-pr.md",
+        "__GITHUB_ISSUE_PROMPT__": "github-issue.md",
+    }.items():
+        prompt = read_prompt(prompts_dir / filename, placeholder)
+        config = config.replace(placeholder, prompt.replace("\n", "\n            "))
     config = config.replace("__LITELLM_MASTER_KEY__", master_key)
     config = config.replace("__HERMES_DASHBOARD_USERNAME__", dashboard_username)
     config = config.replace(

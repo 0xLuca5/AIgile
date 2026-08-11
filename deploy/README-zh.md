@@ -1,5 +1,7 @@
 # AIgile
 
+[English](README.md)
+
 这是 [Agentic SDLC](../../../README-zh.md) 的可运行基础设施：通过 Docker 将 Hermes 接入 DIAL，并提供 GitHub Webhook、Dashboard 与 Kanban。业务愿景与人机分工见项目根目录 README；本页仅说明部署与操作。
 
 ```text
@@ -17,6 +19,8 @@ GitHub Issue / PR → Hermes → LiteLLM → DIAL
 | [settings/.env.example](settings/.env.example) | 密钥和 Dashboard 登录信息模板。复制为 `settings/.env` 后填写。 |
 | [settings/litellm-config.yaml](settings/litellm-config.yaml) | DIAL 模型设置。 |
 | [settings/hermes-config.yaml](settings/hermes-config.yaml) | Hermes、Kanban、Webhook 路由和 Prompt。 |
+| [prompts](../prompts) | GitHub Webhook 路由使用的 Prompt 正文。 |
+| [skills](skills) | 提供给 Hermes 的自定义 Skills；每个 Skill 使用独立目录和 `SKILL.md`。 |
 
 安装和容器运行相关文件都在 [deploy](deploy) 目录，不需要日常修改。
 
@@ -142,3 +146,15 @@ docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile h
 ```
 
 Hermes 运行时数据默认保存在 `%USERPROFILE%\.hermes-dial`，不会提交到仓库。
+
+## 自定义 Skills
+
+[skills](skills) 与 Compose 文件同级，会以只读方式挂载到 Hermes 容器的 `/opt/dial/skills`，并通过 `skills.external_dirs` 自动发现。新增 Skill 时使用如下结构：
+
+```text
+deploy/skills/
+└── <skill-name>/
+	└── SKILL.md
+```
+
+修改 `settings/hermes-config.yaml` 后，需要重新初始化运行时配置：先停止服务，删除 `HERMES_DATA_DIR` 中的 `.dial-litellm-initialized`，再重新启动。只新增或修改 [skills](skills) 中的文件时，重启 `hermes` 服务即可重新加载目录。
