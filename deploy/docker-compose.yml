@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: dial-litellm-proxy
+    container_name: litellm-proxy
     command:
       - --config
       - /app/litellm-config.yaml
@@ -12,12 +12,11 @@ services:
       - --port
       - "4000"
     env_file:
-      - .env
+      - ../settings/.env
     ports:
-      # 仅向宿主机开放，避免将 DIAL 代理暴露至局域网。
       - "127.0.0.1:4000:4000"
     volumes:
-      - ./litellm-config.yaml:/app/litellm-config.yaml:ro
+      - ../settings/litellm-config.yaml:/app/litellm-config.yaml:ro
     restart: unless-stopped
     healthcheck:
       test:
@@ -32,12 +31,10 @@ services:
 
   hermes-init:
     image: nousresearch/hermes-agent:latest
-    container_name: dial-hermes-init
+    container_name: hermes-init
     profiles:
       - hermes
-    command:
-      - python
-      - /opt/dial/bootstrap-hermes.py
+    command: [python, /opt/dial/bootstrap-hermes.py]
     environment:
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
@@ -47,21 +44,18 @@ services:
       litellm-proxy:
         condition: service_healthy
     volumes:
-      # HERMES_DATA_DIR is outside this repository by default. The generated
-      # config is available there as config.yaml and survives container rebuilds.
       - ${HERMES_DATA_DIR:-${USERPROFILE}/.hermes-dial}:/opt/data
-      - ./hermes-config.yaml:/opt/dial/hermes-config.yaml:ro
+      - ../settings/hermes-config.yaml:/opt/dial/hermes-config.yaml:ro
       - ./bootstrap-hermes.py:/opt/dial/bootstrap-hermes.py:ro
     restart: "no"
 
   hermes:
     image: nousresearch/hermes-agent:latest
-    container_name: dial-hermes
+    container_name: hermes
     profiles:
       - hermes
     command: gateway run
     environment:
-      # Hermes authenticates to LiteLLM; it does not need DIAL_API_KEY.
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
       WEBHOOK_ENABLED: "true"
       WEBHOOK_PORT: "8644"
@@ -74,25 +68,19 @@ services:
       hermes-init:
         condition: service_completed_successfully
     ports:
-      # The Hermes API is intentionally host-only.
       - "127.0.0.1:8642:8642"
-      # GitHub reaches this through a public HTTPS tunnel, not directly.
       - "127.0.0.1:8644:8644"
-      # Dashboard and Kanban UI are intentionally host-only.
       - "127.0.0.1:9119:9119"
     volumes:
-      # HERMES_DATA_DIR is mounted to /opt/data. Edit its config.yaml directly
-      # from the host; it persists Hermes credentials, sessions, skills, and memory.
       - ${HERMES_DATA_DIR:-${USERPROFILE}/.hermes-dial}:/opt/data
-      # The repository Hermes is permitted to work on.
-      - ../../..:/workspace
+      - ../../../..:/workspace
     working_dir: /workspace
     shm_size: 1gb
     restart: unless-stopped
 
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: dial-hermes-tunnel
+    container_name: hermes-tunnel
     profiles:
       - tunnel
     command: tunnel --no-autoupdate --url http://hermes:8644

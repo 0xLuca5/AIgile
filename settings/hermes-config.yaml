@@ -1,6 +1,6 @@
 # Hermes configuration source managed in this repository.
-# On first initialization, bootstrap-hermes.py writes a rendered copy to the
-# external HERMES_DATA_DIR. Edit routes and prompts here, then reinitialize.
+# On first initialization, deploy/bootstrap-hermes.py writes a rendered copy to
+# the external HERMES_DATA_DIR. Edit routes and prompts here, then reinitialize.
 _config_version: 33
 model:
   provider: custom

@@ -51,9 +51,7 @@ def main() -> None:
     config = config.replace(
         "__HERMES_DASHBOARD_PASSWORD_HASH__", hash_password(dashboard_password)
     )
-    target.write_text(
-        config, encoding="utf-8"
-    )
+    target.write_text(config, encoding="utf-8")
     marker.touch()
     print("Hermes configured to use the LiteLLM DIAL proxy and Dashboard password authentication.")
 
