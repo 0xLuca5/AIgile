@@ -4,7 +4,7 @@
 _config_version: 33
 model:
   provider: custom
-  default: dial-gpt-5
+  default: __HERMES_DEFAULT_MODEL__
   base_url: http://litellm-proxy:4000/v1
   api_mode: chat_completions
   api_key: __LITELLM_MASTER_KEY__

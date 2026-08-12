@@ -20,6 +20,7 @@ The files users normally edit are in [settings](../settings):
 | --- | --- |
 | [settings/.env.example](../settings/.env.example) | Template for secrets and Dashboard credentials. Copy it to `settings/.env` and fill in the values. |
 | [settings/litellm-config.yaml](../settings/litellm-config.yaml) | DIAL model configuration. |
+| [settings/litellm-config.copilot.yaml](../settings/litellm-config.copilot.yaml) | Optional DIAL and GitHub Copilot model configuration. |
 | [settings/hermes-config.yaml](../settings/hermes-config.yaml) | Hermes, Kanban, webhook routes, and prompts. |
 | [prompts](../prompts) | Prompt bodies used by GitHub webhook routes. |
 | [skills](skills) | Custom Skills for Hermes. Each Skill has its own directory with a `SKILL.md` file. |
@@ -47,6 +48,53 @@ The default model is `dial-gpt-5`; change it in [settings/litellm-config.yaml](.
 | `hermes-init` | One-time | Generates Hermes runtime configuration and the Dashboard password hash. `Exited (0)` means success. |
 | `hermes` | Long-running | Runs the Hermes Gateway, webhooks, Dashboard, and Kanban. |
 | `cloudflared` | Optional | Provides a temporary public HTTPS URL for local webhook development. |
+| `copilot-login` | On demand | Opens GitHub Copilot device authorization in the current terminal. |
+
+### Model configuration
+
+The default configuration is [settings/litellm-config.yaml](../settings/litellm-config.yaml). Copy it to create and maintain a LiteLLM `model_list` for your own routes, such as DIAL, GitHub Copilot, or any other LiteLLM-supported provider.
+
+Use `LITELLM_CONFIG_PATH` in `settings/.env` to select the configuration file mounted into the LiteLLM container. The path is relative to [deploy/docker-compose.yml](docker-compose.yml):
+
+```dotenv
+# Default; this file is also used when the variable is unset
+LITELLM_CONFIG_PATH=../settings/litellm-config.yaml
+
+# GitHub Copilot example configuration
+# LITELLM_CONFIG_PATH=../settings/litellm-config.copilot.yaml
+
+# Example custom configuration
+# LITELLM_CONFIG_PATH=../settings/litellm-config.my-models.yaml
+
+# The model_name that Hermes requests; it must exist in the selected model_list
+HERMES_DEFAULT_MODEL=dial-gpt-5
+```
+
+`LITELLM_CONFIG_PATH` only determines which routes LiteLLM loads; it does not automatically change the model that Hermes requests. Select a `model_name` from the chosen configuration through `HERMES_DEFAULT_MODEL`, for example `github-copilot-gpt-5.4` for the Copilot configuration.
+
+After changing `LITELLM_CONFIG_PATH`, `HERMES_DEFAULT_MODEL`, or the configuration file, regenerate the Hermes configuration and recreate the services:
+
+```powershell
+docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes down
+Remove-Item "$env:USERPROFILE\.hermes-dial\.dial-litellm-initialized" -ErrorAction SilentlyContinue
+docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes up -d
+```
+
+#### GitHub Copilot device authorization
+
+If the selected model configuration includes a `github_copilot/...` route, complete device authorization once before starting the full stack so the LiteLLM health check does not wait for sign-in. The authorization URL and code appear directly in the current terminal:
+
+```sh
+docker compose --env-file settings/.env -f deploy/docker-compose.yml run --rm copilot-login
+```
+
+Open the displayed URL, enter the displayed code, and complete GitHub authorization. When LiteLLM reports successful startup, press `Ctrl+C`. The OAuth token is stored under `HERMES_DATA_DIR/litellm-copilot`, so it survives container recreation.
+
+The command intentionally does not use `--build`: the same image is built by the normal deployment command. On some Docker Desktop versions, the Buildx Bake UI can report `failed to execute bake: read |0: file already closed` after the image export has completed. If a rebuild is required, run the following in PowerShell before the deployment or login command to disable Bake for that terminal session:
+
+```powershell
+$env:COMPOSE_BAKE = "false"
+```
 
 All ports bind to `127.0.0.1` by default and can only be reached from the Docker host:
 
@@ -66,11 +114,19 @@ All ports bind to `127.0.0.1` by default and can only be reached from the Docker
 Use this for local chat, Dashboard, Kanban, or a server that already has a public reverse proxy. This mode does **not** make GitHub webhooks publicly reachable.
 
 ```sh
-docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes up -d --build
+docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes up -d
 docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes ps
 ```
 
 `litellm-proxy` and `hermes` should be running, while `hermes-init` should show `Exited (0)`.
+
+To rebuild the LiteLLM image after changing [Dockerfile](Dockerfile), use PowerShell with Bake disabled, then start the stack without `--build`:
+
+```powershell
+$env:COMPOSE_BAKE = "false"
+docker compose --env-file settings/.env -f deploy/docker-compose.yml build litellm-proxy
+docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes up -d
+```
 
 ### Configure GitHub webhooks
 
@@ -93,7 +149,7 @@ The secret for both webhooks must match `GITHUB_WEBHOOK_SECRET` in `settings/.en
 Enable Cloudflared only for local development when no existing public HTTPS endpoint is available. It creates a temporary HTTPS URL that forwards to Hermes on port `8644`.
 
 ```sh
-docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes --profile tunnel up -d --build
+docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes --profile tunnel up -d
 docker compose --env-file settings/.env -f deploy/docker-compose.yml --profile hermes --profile tunnel logs -f cloudflared
 ```
 

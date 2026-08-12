@@ -1,0 +1,12 @@
+# Optional configuration: set LITELLM_CONFIG_PATH=../settings/litellm-config.copilot.yaml
+# in settings/.env to enable the GitHub Copilot route.
+model_list:
+  - model_name: model-define-in-litellm
+    litellm_params:
+      model: azure/gpt-5.5-2026-04-24
+      api_key: <your_api_key>
+      base_url: https://ai-proxy.lab.epam.com
+      drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

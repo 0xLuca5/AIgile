@@ -30,6 +30,7 @@ def main() -> None:
     require_env("GITHUB_WEBHOOK_SECRET")
     dashboard_username = require_env("HERMES_DASHBOARD_BASIC_AUTH_USERNAME")
     dashboard_password = require_env("HERMES_DASHBOARD_BASIC_AUTH_PASSWORD")
+    default_model = os.environ.get("HERMES_DEFAULT_MODEL", "dial-gpt-5")
 
     try:
         from plugins.dashboard_auth.basic import hash_password
@@ -62,6 +63,7 @@ def main() -> None:
         prompt = read_prompt(prompts_dir / filename, placeholder)
         config = config.replace(placeholder, prompt.replace("\n", "\n            "))
     config = config.replace("__LITELLM_MASTER_KEY__", master_key)
+    config = config.replace("__HERMES_DEFAULT_MODEL__", default_model)
     config = config.replace("__HERMES_DASHBOARD_USERNAME__", dashboard_username)
     config = config.replace(
         "__HERMES_DASHBOARD_PASSWORD_HASH__", hash_password(dashboard_password)
